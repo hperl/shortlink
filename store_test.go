@@ -5,8 +5,17 @@ import (
 	"testing"
 )
 
-func Test_NewStoreIsEmpty(t *testing.T) {
-	store := new(store)
+func Test_NewStoreIsReady(t *testing.T) {
+	store := NewStore(nil)
+	if len(store.Redirects()) != 0 {
+		t.Error("Empty store should have no redirects")
+	}
+	store.Add(&redirect{"a", "b"})
+	if len(store.Redirects()) != 1 {
+		t.Error("Empty store should have 1 redirect")
+	}
+
+	store.Delete("a")
 	if len(store.Redirects()) != 0 {
 		t.Error("Empty store should have no redirects")
 	}

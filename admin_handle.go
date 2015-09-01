@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 import "os"
@@ -14,8 +16,8 @@ const ADMIN_USER = "ADMIN_USER"
 const ADMIN_PASSWORD = "ADMIN_PASSWORD"
 
 type adminHandle struct {
-	store  *store
-	errMsg string
+	store   *store
+	message string
 }
 
 func (h adminHandle) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -24,7 +26,7 @@ func (h adminHandle) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	u, p, ok := req.BasicAuth()
 	if !ok || user == "" || password == "" || u != user || p != password {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"Link-Administration\"")
+		w.Header().Set("WWW-Authenticate", `Basic realm="Link-Administration"`)
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Benutzername und Passwort bekommst du von Henning."))
 		return
@@ -32,10 +34,27 @@ func (h adminHandle) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == "POST" {
 		if err := h.addRedirect(w, req); err != nil {
-			h.errMsg = err.Error()
+			h.message = err.Error()
 		}
 	}
+	if req.Method == "GET" && h.isDeleteAction(req.URL) {
+		h.message = h.deleteRedirect(req.URL)
+		http.Redirect(w, req, "/admin", http.StatusTemporaryRedirect)
+	}
 	h.renderAdminInterface(w)
+}
+
+func (h *adminHandle) isDeleteAction(url *url.URL) bool {
+	return strings.Contains(url.Path, "/admin/delete")
+}
+
+func (h *adminHandle) deleteRedirect(url *url.URL) string {
+	from := url.Query().Get("from")
+	if r, ok := h.store.Get(from); ok {
+		h.store.Delete(from)
+		return fmt.Sprintf("%q → %q wurde gelöscht.", r.From, r.To)
+	}
+	return fmt.Sprintf("%q konnte nicht gelöscht werden", from)
 }
 
 func (h *adminHandle) addRedirect(w http.ResponseWriter, req *http.Request) (err error) {
@@ -92,12 +111,12 @@ func (h *adminHandle) renderAdminInterface(w http.ResponseWriter) {
 		Title     string
 		BaseURL   string
 		Redirects []*redirect
-		ErrorMsg  string
+		Message   string
 	}{
 		Title:     "Link-Administration",
 		BaseURL:   os.Getenv("BASE_URL"),
 		Redirects: h.store.Redirects(),
-		ErrorMsg:  h.errMsg,
+		Message:   h.message,
 	}
 
 	err = t.Execute(w, data)
@@ -111,36 +130,65 @@ const adminIndexTemplate = `
 <!DOCTYPE html>
 <html>
 	<head>
-		<meta charset="UTF-8">
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 		<title>{{.Title}}</title>
 	</head>
 	<body>
-		<h1>{{.Title}}</h1>
-		<h2>Aktuelle Kurzlinks</h2>
-		<ul>
-			{{range .Redirects}}
-				<li>
-					<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
-					→
-					<a href="{{.To}}">{{.To}}</a>
-				</li>
-			{{else}}
-				<li><i>keine Redirects</i></li>
-			{{end}}
-		</ul>
-		<hr>
-		<h2>Neuer Kurzlink</h2>
-		{{if .ErrorMsg}}
-			<p><strong>{{.ErrorMsg}}</strong></p>
-		{{end}}
-		<form action="/admin" method="post">
-			Kurzlink:<br>
-			<input type="text" name="from">
-			<br>
-			Zieladresse:<br>
-			<input type="text" name="to">
-			<br>
-			<input type="submit" value="Erstellen">
-		</form>
+		<div class="container">
+			<div class="row">
+				<div class="col-md-12">
+					<h1>{{.Title}}</h1>
+					{{if .Message}}
+						<p class="bg-primary">
+							{{.Message}}
+						</p>
+					{{end}}
+				</div>
+
+				<div class="col-md-6">
+					<h2>Aktuelle Kurzlinks</h2>
+					<ul class="list-unstyled">
+						{{range .Redirects}}
+							<li>
+								<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
+								→
+								<a href="{{.To}}">{{.To}}</a>
+								<a class="btn btn-default btn-xs" href="/admin/delete?from={{.From}}">löschen</a>
+							</li>
+						{{else}}
+							<li><i>keine Redirects</i></li>
+						{{end}}
+					</ul>
+				</div>
+
+				<div class="col-md-6">
+					<h2>Neuer Kurzlink</h2>
+					<form class="form-horizontal" action="/admin" method="post">
+						<div class="form-group">
+							<label for="from" class="col-sm-2 control-label">Kurzlink</label>
+							<div class="col-sm-10">
+								<input id="from" class="form-control" type="text" placeholder="z.B. lgt">
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="to" class="col-sm-2 control-label">Zieladresse</label>
+							<div class="col-sm-10">
+								<input id="to" class="form-control" type="text" placeholder="z.B. http://www.yfu.de">
+							</div>
+						</div>
+
+						<div class="form-group">
+							<div class="col-sm-offset-2 col-sm-10">
+								<button type="submit" class="btn btn-primary">Erstellen</button>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
 	</body>
 </html>`

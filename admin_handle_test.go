@@ -51,10 +51,10 @@ func Test_AdminPostNewRedirect(t *testing.T) {
 	}
 
 	tests := []testDatum{
-		{"lgt15", "http://www.google.de", http.StatusOK, 1},       // works first time
-		{"lgt15", "http://www.google.de", http.StatusNotFound, 1}, // does not work again second time
-		{"admin", "http://www.google.de", http.StatusNotFound, 1}, // "admin" is a protected path
-		{"foo", "invalid.domain", http.StatusNotFound, 1},         // "admin" is a protected path
+		{"lgt15", "http://www.google.de", http.StatusOK, 1}, // works first time
+		{"lgt15", "http://www.google.de", http.StatusOK, 1}, // does not work again second time
+		{"admin", "http://www.google.de", http.StatusOK, 1}, // "admin" is a protected path
+		{"foo", "invalid.domain", http.StatusOK, 1},         // "admin" is a protected path
 	}
 
 	os.Setenv(ADMIN_USER, "foo")
@@ -81,5 +81,33 @@ func Test_AdminPostNewRedirect(t *testing.T) {
 		if len(testStore.Redirects()) != test.expectedLength {
 			t.Errorf("Expected exactly %d redirect(s), was %d", test.expectedLength, len(testStore.Redirects()))
 		}
+	}
+}
+
+func Test_AdminDeleteRedirect(t *testing.T) {
+	os.Setenv(ADMIN_USER, "foo")
+	os.Setenv(ADMIN_PASSWORD, "bar")
+
+	testStore.DeleteAll()
+	if len(testStore.Redirects()) != 0 {
+		t.Error("redirect was not cleared")
+	}
+	testStore.Add(&redirect{"delete-test", "http://www.example.com"})
+	if len(testStore.Redirects()) != 1 {
+		t.Error("redirect was not added")
+	}
+
+	req, err := http.NewRequest("GET", server.URL+"/admin/delete?from=delete-test", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.SetBasicAuth("foo", "bar")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	_, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(testStore.Redirects()) != 0 {
+		t.Error("redirect was not deleted")
 	}
 }

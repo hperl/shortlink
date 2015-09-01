@@ -26,5 +26,5 @@ func main() {
 	db := NewStore(file)
 	db.filename = storeFile
 	mux := setupMux(db)
-	panic(http.ListenAndServe(":80", mux))
+	log.Fatal(http.ListenAndServe(":80", mux))
 }

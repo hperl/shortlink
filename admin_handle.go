@@ -142,26 +142,30 @@ const adminIndexTemplate = `
 				<div class="col-md-12">
 					<h1>{{.Title}}</h1>
 					{{if .Message}}
-						<p class="bg-primary">
+						<div class="alert alert-warning" role="alert">
 							{{.Message}}
-						</p>
+						</div>
 					{{end}}
 				</div>
 
 				<div class="col-md-6">
 					<h2>Aktuelle Kurzlinks</h2>
-					<ul class="list-unstyled">
+					<table class="table">
 						{{range .Redirects}}
-							<li>
-								<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
-								→
-								<a href="{{.To}}">{{.To}}</a>
-								<a class="btn btn-default btn-xs" href="/admin/delete?from={{.From}}">löschen</a>
-							</li>
+							<tr>
+								<td>
+									<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
+									→
+									<a href="{{.To}}">{{.To}}</a>
+								</td>
+								<td>
+									<a class="btn btn-danger btn-xs" href="/admin/delete?from={{.From}}">löschen</a>
+								</td>
+							</tr>
 						{{else}}
-							<li><i>keine Redirects</i></li>
+							<tr><td>keine Redirects</td></tr>
 						{{end}}
-					</ul>
+					</table>
 				</div>
 
 				<div class="col-md-6">
@@ -170,20 +174,20 @@ const adminIndexTemplate = `
 						<div class="form-group">
 							<label for="from" class="col-sm-2 control-label">Kurzlink</label>
 							<div class="col-sm-10">
-								<input id="from" class="form-control" type="text" placeholder="z.B. lgt">
+								<input id="from" name="from" class="form-control" type="text" placeholder="z.B. lgt">
 							</div>
 						</div>
 
 						<div class="form-group">
 							<label for="to" class="col-sm-2 control-label">Zieladresse</label>
 							<div class="col-sm-10">
-								<input id="to" class="form-control" type="text" placeholder="z.B. http://www.yfu.de">
+								<input id="to" name="to" class="form-control" type="text" placeholder="z.B. http://www.yfu.de">
 							</div>
 						</div>
 
 						<div class="form-group">
 							<div class="col-sm-offset-2 col-sm-10">
-								<button type="submit" class="btn btn-primary">Erstellen</button>
+								<input type="submit" class="btn btn-primary" value="Erstellen">
 							</div>
 						</div>
 					</form>

@@ -2,86 +2,80 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"os"
+
+	"gopkg.in/redis.v3"
+)
+
+const (
+	redisRedirectsKey = "shortlink_redirects"
 )
 
 type store struct {
-	redirects map[string]*redirect
-	filename  string
+	db *redis.Client
 }
 
 func (s *store) Redirects() (redirects []*redirect) {
-	if s.redirects == nil {
-		return
+	results, err := s.db.HGetAllMap(redisRedirectsKey).Result()
+	if err != nil {
+		log.Printf("store.Redirects(): %v", err)
 	}
 
-	for _, r := range s.redirects {
-		redirects = append(redirects, r)
+	for _, jsonString := range results {
+		redirect := new(redirect)
+		json.Unmarshal([]byte(jsonString), redirect)
+		redirects = append(redirects, redirect)
 	}
 
 	return
 }
 
 func (s *store) Add(redirect *redirect) error {
-	if _, ok := s.redirects[redirect.From]; ok {
-		return fmt.Errorf("Quelle %q existiert schon", redirect.From)
-	} else {
-		if s.redirects == nil {
-			s.DeleteAll()
-		}
-		s.redirects[redirect.From] = redirect
+	jsonBytes, err := json.Marshal(redirect)
+	if err != nil {
+		panic(err)
 	}
-
-	s.writeFile()
+	s.db.HSet(redisRedirectsKey, redirect.From, string(jsonBytes)).Result()
 
 	return nil
 }
 
-func (s *store) Get(from string) (*redirect, bool) {
-	r, ok := s.redirects[from]
-	return r, ok
-}
-
-func (s *store) writeFile() {
-	data, _ := json.Marshal(s.Redirects())
-	if err := ioutil.WriteFile(s.filename, data, 0644); err != nil {
-		log.Printf("Error writing data to %q: %v.", s.filename, err)
+func (s *store) Get(from string) (r *redirect, ok bool) {
+	jsonString, err := s.db.HGet(redisRedirectsKey, from).Result()
+	if err != nil {
+		log.Printf("store.Get(%q): %v", from, err)
+		return nil, false
 	}
+	r = new(redirect)
+	if err := json.Unmarshal([]byte(jsonString), r); err != nil {
+		log.Printf("store.Get(%q): %v", from, err)
+		return nil, false
+	}
+
+	return r, true
 }
 
 func (s *store) Delete(from string) {
-	delete(s.redirects, from)
+	cnt, err := s.db.HDel(redisRedirectsKey, from).Result()
+	if err != nil {
+		log.Printf("store.Delete(%q): %v", from, err)
+	}
+	if cnt != 1 {
+		log.Printf("store.Delete(%q): not found", from)
+	}
 }
 
 func (s *store) DeleteAll() {
-	s.redirects = make(map[string]*redirect)
+	s.db.Del(redisRedirectsKey)
 }
 
-func NewStore(data io.Reader) (s *store) {
+func (s *store) Close() error {
+	return s.db.Close()
+}
+
+func NewStore() (s *store) {
 	s = &store{
-		filename:  os.Getenv("STORE_FILE"),
-		redirects: make(map[string]*redirect),
-	}
-
-	var redirects []*redirect
-
-	if data != nil {
-		bytes, err := ioutil.ReadAll(data)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		if err = json.Unmarshal(bytes, &redirects); err != nil {
-			log.Print(err)
-			return
-		}
-		for _, r := range redirects {
-			s.redirects[r.From] = r
-		}
+		db: redis.NewClient(&redis.Options{Addr: "redis:6379"}),
 	}
 
 	return

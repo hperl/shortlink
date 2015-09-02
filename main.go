@@ -23,8 +23,7 @@ func main() {
 	} else {
 		defer file.Close()
 	}
-	db := NewStore(file)
-	db.filename = storeFile
+	db := NewStore()
 	mux := setupMux(db)
 	log.Fatal(http.ListenAndServe(":80", mux))
 }

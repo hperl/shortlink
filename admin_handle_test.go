@@ -43,6 +43,8 @@ func Test_GetAdminSucceedsWithPassword(t *testing.T) {
 }
 
 func Test_AdminPostNewRedirect(t *testing.T) {
+	testStore.DeleteAll()
+
 	type testDatum struct {
 		from           string
 		to             string
@@ -54,7 +56,9 @@ func Test_AdminPostNewRedirect(t *testing.T) {
 		{"lgt15", "http://www.google.de", http.StatusOK, 1}, // works first time
 		{"lgt15", "http://www.google.de", http.StatusOK, 1}, // does not work again second time
 		{"admin", "http://www.google.de", http.StatusOK, 1}, // "admin" is a protected path
-		{"foo", "invalid.domain", http.StatusOK, 1},         // "admin" is a protected path
+		{"fooab", "some.invalid.domains", http.StatusOK, 1}, // invalid domain
+		{"datei", "http://www.google.de", http.StatusOK, 1}, // "datei" is a protected path
+		{"a/./b", "http://www.google.de", http.StatusOK, 1}, // only alphanumerical
 	}
 
 	os.Setenv(ADMIN_USER, "foo")
@@ -96,6 +100,9 @@ func Test_AdminDeleteRedirect(t *testing.T) {
 	if len(testStore.Redirects()) != 1 {
 		t.Error("redirect was not added")
 	}
+	if _, ok := testStore.Get("delete-test"); !ok {
+		t.Fatal("redirect was not added")
+	}
 
 	req, err := http.NewRequest("GET", server.URL+"/admin/delete?from=delete-test", nil)
 	if err != nil {
@@ -108,6 +115,9 @@ func Test_AdminDeleteRedirect(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(testStore.Redirects()) != 0 {
+		for _, r := range testStore.Redirects() {
+			t.Logf("%+v", r)
+		}
 		t.Error("redirect was not deleted")
 	}
 }

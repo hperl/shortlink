@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -50,11 +51,8 @@ func (h *adminHandle) isDeleteAction(url *url.URL) bool {
 
 func (h *adminHandle) deleteRedirect(url *url.URL) string {
 	from := url.Query().Get("from")
-	if r, ok := h.store.Get(from); ok {
-		h.store.Delete(from)
-		return fmt.Sprintf("%q → %q wurde gelöscht.", r.From, r.To)
-	}
-	return fmt.Sprintf("%q konnte nicht gelöscht werden", from)
+	h.store.Delete(from)
+	return fmt.Sprintf("%q wurde gelöscht", from)
 }
 
 func (h *adminHandle) addRedirect(w http.ResponseWriter, req *http.Request) (err error) {
@@ -94,8 +92,11 @@ func (h *adminHandle) validateFrom(from string) error {
 	if from == "" {
 		return errors.New("Kurzlink ist leer.")
 	}
-	if from == "admin" {
-		return errors.New("'admin' darf nicht als Kurzlink verwendet werden.")
+	if matched, err := regexp.MatchString(`\A[[:alnum:]]+\z`, from); err != nil || !matched {
+		return errors.New("Kurzlink darf nur Zahlen und Buchstaben enthalten")
+	}
+	if from == "admin" || from == "datei" {
+		return fmt.Errorf("%q darf nicht als Kurzlink verwendet werden.", from)
 	}
 	return nil
 }

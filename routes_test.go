@@ -15,18 +15,16 @@ func TestMain(m *testing.M) {
 	setupServer(testStore)
 	retVal := m.Run()
 	server.Close()
-	os.Remove(testStore.filename)
 	os.Exit(retVal)
 }
 
 func setupStore() *store {
-	db := NewStore(nil)
+	db := NewStore()
 
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
 		panic(err)
 	}
-	db.filename = f.Name()
 	f.Close()
 
 	return db

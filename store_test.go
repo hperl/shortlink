@@ -1,12 +1,11 @@
 package main
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 func Test_NewStoreIsReady(t *testing.T) {
-	store := NewStore(nil)
+	store := NewStore()
+	store.DeleteAll()
+	defer store.Close()
 	if len(store.Redirects()) != 0 {
 		t.Error("Empty store should have no redirects")
 	}
@@ -22,9 +21,12 @@ func Test_NewStoreIsReady(t *testing.T) {
 }
 
 func Test_ReadStoreState(t *testing.T) {
-	s := strings.NewReader(`[{"From":"foo","To":"http://yfu.de"}]`)
+	store := NewStore()
+	store.DeleteAll()
+	store.Add(&redirect{From: "foo", To: "http://yfu.de"})
+	store.Close()
 
-	store := NewStore(s)
+	store = NewStore()
 	if len(store.Redirects()) != 1 {
 		t.Fatal("Store should have one redirect")
 	}
@@ -33,4 +35,5 @@ func Test_ReadStoreState(t *testing.T) {
 	if r.From != "foo" || r.To != "http://yfu.de" {
 		t.Error(r)
 	}
+	store.Close()
 }

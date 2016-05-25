@@ -149,27 +149,7 @@ const adminIndexTemplate = `
 					{{end}}
 				</div>
 
-				<div class="col-md-6">
-					<h2>Aktuelle Kurzlinks</h2>
-					<table class="table">
-						{{range .Redirects}}
-							<tr>
-								<td>
-									<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
-									→
-									<a href="{{.To}}">{{.To}}</a>
-								</td>
-								<td>
-									<a class="btn btn-danger btn-xs" href="/admin/delete?from={{.From}}">löschen</a>
-								</td>
-							</tr>
-						{{else}}
-							<tr><td>keine Redirects</td></tr>
-						{{end}}
-					</table>
-				</div>
-
-				<div class="col-md-6">
+				<div class="col-md-12">
 					<h2>Neuer Kurzlink</h2>
 					<form class="form-horizontal" action="/admin" method="post">
 						<div class="form-group">
@@ -192,6 +172,26 @@ const adminIndexTemplate = `
 							</div>
 						</div>
 					</form>
+				</div>
+
+				<div class="col-md-12">
+					<h2>Aktuelle Kurzlinks</h2>
+					<table class="table">
+						{{range .Redirects}}
+							<tr>
+								<td>
+									<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
+									→
+									<a href="{{.To}}">{{.To}}</a>
+								</td>
+								<td>
+									<a class="btn btn-danger btn-xs" href="/admin/delete?from={{.From}}">löschen</a>
+								</td>
+							</tr>
+						{{else}}
+							<tr><td>keine Redirects</td></tr>
+						{{end}}
+					</table>
 				</div>
 			</div>
 		</div>

@@ -13,8 +13,8 @@ import (
 
 import "os"
 
-const ADMIN_USER = "ADMIN_USER"
-const ADMIN_PASSWORD = "ADMIN_PASSWORD"
+const adminUserEnv = "ADMIN_USER"
+const adminPassEnv = "ADMIN_PASSWORD"
 
 type adminHandle struct {
 	store   *store
@@ -22,8 +22,8 @@ type adminHandle struct {
 }
 
 func (h adminHandle) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	user := os.Getenv(ADMIN_USER)
-	password := os.Getenv(ADMIN_PASSWORD)
+	user := os.Getenv(adminUserEnv)
+	password := os.Getenv(adminPassEnv)
 
 	u, p, ok := req.BasicAuth()
 	if !ok || user == "" || password == "" || u != user || p != password {
@@ -59,10 +59,10 @@ func (h *adminHandle) addRedirect(w http.ResponseWriter, req *http.Request) (err
 	from := req.PostFormValue("from")
 	to := req.PostFormValue("to")
 
-	if err := h.validateTo(to); err != nil {
+	if err := validateTo(to); err != nil {
 		return err
 	}
-	if err := h.validateFrom(from); err != nil {
+	if err := validateFrom(from); err != nil {
 		return err
 	}
 
@@ -73,30 +73,30 @@ func (h *adminHandle) addRedirect(w http.ResponseWriter, req *http.Request) (err
 	return nil
 }
 
-func (h *adminHandle) validateTo(to string) error {
+func validateTo(to string) error {
 	if to == "" {
 		return errors.New("Ziel ist leer.")
 	}
-	if !isUrlReachable(to) {
-		return fmt.Errorf("%q ist keine gültige URL.", to)
+	if !isURLReachable(to) {
+		return fmt.Errorf("%q ist keine gültige URL", to)
 	}
 	return nil
 }
 
-func isUrlReachable(url string) bool {
+func isURLReachable(url string) bool {
 	_, err := http.Get(url)
 	return err == nil
 }
 
-func (h *adminHandle) validateFrom(from string) error {
+func validateFrom(from string) error {
 	if from == "" {
 		return errors.New("Kurzlink ist leer.")
 	}
-	if matched, err := regexp.MatchString(`\A[[:alnum:]]+\z`, from); err != nil || !matched {
+	if matched, err := regexp.MatchString(`\A[0-9A-za-zäöüÄÖÜ\-\+_]+\z`, from); err != nil || !matched {
 		return errors.New("Kurzlink darf nur Zahlen und Buchstaben enthalten")
 	}
 	if from == "admin" || from == "datei" {
-		return fmt.Errorf("%q darf nicht als Kurzlink verwendet werden.", from)
+		return fmt.Errorf("%q darf nicht als Kurzlink verwendet werden", from)
 	}
 	return nil
 }

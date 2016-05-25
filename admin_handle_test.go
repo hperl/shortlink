@@ -9,8 +9,8 @@ import (
 )
 
 func Test_GetAdminFailsWithoutPassword(t *testing.T) {
-	os.Setenv(ADMIN_USER, "")
-	os.Setenv(ADMIN_PASSWORD, "")
+	os.Setenv(adminUserEnv, "")
+	os.Setenv(adminPassEnv, "")
 	req, err := http.NewRequest("GET", server.URL+"/admin", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -26,8 +26,8 @@ func Test_GetAdminFailsWithoutPassword(t *testing.T) {
 }
 
 func Test_GetAdminSucceedsWithPassword(t *testing.T) {
-	os.Setenv(ADMIN_USER, "foo")
-	os.Setenv(ADMIN_PASSWORD, "bar")
+	os.Setenv(adminUserEnv, "foo")
+	os.Setenv(adminPassEnv, "bar")
 	req, err := http.NewRequest("GET", server.URL+"/admin", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -45,24 +45,23 @@ func Test_GetAdminSucceedsWithPassword(t *testing.T) {
 func Test_AdminPostNewRedirect(t *testing.T) {
 	testStore.DeleteAll()
 
-	type testDatum struct {
-		from           string
-		to             string
-		expectedStatus int
-		expectedLength int
+	type testData struct {
+		from              string
+		to                string
+		expectedRedirects int
 	}
 
-	tests := []testDatum{
-		{"lgt15", "http://www.google.de", http.StatusOK, 1}, // works first time
-		{"lgt15", "http://www.google.de", http.StatusOK, 1}, // does not work again second time
-		{"admin", "http://www.google.de", http.StatusOK, 1}, // "admin" is a protected path
-		{"fooab", "some.invalid.domains", http.StatusOK, 1}, // invalid domain
-		{"datei", "http://www.google.de", http.StatusOK, 1}, // "datei" is a protected path
-		{"a/./b", "http://www.google.de", http.StatusOK, 1}, // only alphanumerical
+	tests := []testData{
+		{"lgt15", "http://www.google.de", 1},  // works first time
+		{"lgt-15", "http://www.google.de", 1}, // works with dashes
+		{"admin", "http://www.google.de", 0},  // "admin" is a protected path
+		{"fooab", "some.invalid.domains", 0},  // invalid domain
+		{"datei", "http://www.google.de", 0},  // "datei" is a protected path
+		{"a/./b", "http://www.google.de", 0},  // only alphanumerical
 	}
 
-	os.Setenv(ADMIN_USER, "foo")
-	os.Setenv(ADMIN_PASSWORD, "bar")
+	os.Setenv(adminUserEnv, "foo")
+	os.Setenv(adminPassEnv, "bar")
 
 	for _, test := range tests {
 		data := url.Values{
@@ -79,18 +78,49 @@ func Test_AdminPostNewRedirect(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if res.StatusCode != test.expectedStatus {
-			t.Errorf("expected status %v, got %v", test.expectedStatus, res.StatusCode)
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, res.StatusCode)
 		}
-		if len(testStore.Redirects()) != test.expectedLength {
-			t.Errorf("Expected exactly %d redirect(s), was %d", test.expectedLength, len(testStore.Redirects()))
+		if len(testStore.Redirects()) != test.expectedRedirects {
+			t.Logf("Test data %+v", test)
+			t.Errorf("Expected exactly %d redirect(s), was %d",
+				test.expectedRedirects,
+				len(testStore.Redirects()),
+			)
+		}
+
+		testStore.DeleteAll()
+	}
+}
+
+func Test_validateFrom(t *testing.T) {
+	type testData struct {
+		string      string
+		expectValid bool
+	}
+
+	tests := []testData{
+		{"lgt15", true},
+		{"lgt-15", true},
+		{"-+_", true},
+		{"../invalid", false},
+	}
+
+	for _, test := range tests {
+		err := validateFrom(test.string)
+		t.Logf("test data %+v", test)
+		if test.expectValid && err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+		if !test.expectValid && err == nil {
+			t.Error("expected error, got none")
 		}
 	}
 }
 
 func Test_AdminDeleteRedirect(t *testing.T) {
-	os.Setenv(ADMIN_USER, "foo")
-	os.Setenv(ADMIN_PASSWORD, "bar")
+	os.Setenv(adminUserEnv, "foo")
+	os.Setenv(adminPassEnv, "bar")
 
 	testStore.DeleteAll()
 	if len(testStore.Redirects()) != 0 {

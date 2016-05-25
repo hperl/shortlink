@@ -73,6 +73,7 @@ func (s *store) Close() error {
 	return s.db.Close()
 }
 
+/// NewStore creates a new redirect store.
 func NewStore() (s *store) {
 	s = &store{
 		db: redis.NewClient(&redis.Options{Addr: "redis:6379"}),

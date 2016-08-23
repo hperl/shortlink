@@ -181,7 +181,11 @@ const adminIndexTemplate = `
 							<tr>
 								<td>
 									<a href="{{$.BaseURL}}/{{.From}}">{{$.BaseURL}}/{{.From}}</a>
+                </td>
+                <td>
 									→
+                </td>
+                <td>
 									<a href="{{.To}}">{{.To}}</a>
 								</td>
 								<td>

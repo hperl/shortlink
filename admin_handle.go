@@ -7,11 +7,11 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
-
-import "os"
 
 const adminUserEnv = "ADMIN_USER"
 const adminPassEnv = "ADMIN_PASSWORD"
@@ -119,6 +119,7 @@ func (h *adminHandle) renderAdminInterface(w http.ResponseWriter) {
 		Redirects: h.store.Redirects(),
 		Message:   h.message,
 	}
+	sort.Sort(byFrom(data.Redirects))
 
 	err = t.Execute(w, data)
 	if err != nil {
